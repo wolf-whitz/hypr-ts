@@ -1,0 +1,124 @@
+# Hypr-TS Compiler
+
+A TypeScript-based keybinding compiler for **Hyprland**, with automatic `.ts` file handling, includes, and hot module reload support. Generates a clean Hyprland configuration pointing to your compiled keybindings.
+
+---
+
+## Features
+
+- Scans `./src` for `.ts` files (ignores `./src/compiler`)
+- Supports `.include()` in TypeScript files for modular keybindings
+- Packages all compiled files into a single node folder
+- Generates `hyprland_generated.conf` with all keybindings
+- Generates minimal `hyprland.conf` for Hyprland:
+  - Uses `source` and `exec-once`
+  - Does **not** include other `.ts` files
+- Hot Module Reload (HMR) support for incremental recompilation
+- Permission handling for `hyprland.compiler.sh` and `help.menu.sh`
+- Fully configurable via CLI flags
+
+---
+
+## Installation
+
+1. Clone the repository:
+
+```bash
+git clone <repo-url>
+cd hypr-ts
+````
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Make scripts executable:
+
+```bash
+chmod +x main.sh hyprland.compiler.sh help.menu.sh permission.sh
+```
+
+---
+
+## Usage
+
+```bash
+./main.sh [OPTIONS]
+```
+
+### Options
+
+| Flag                  | Description                                      | Default                     |
+| --------------------- | ------------------------------------------------ | --------------------------- |
+| `-manual`             | Skip automatic chmod for `hyprland.compiler.sh`. | false                       |
+| `-output DIR`         | Override compiled folder.                        | `./compileds`               |
+| `-tmp_conf_dir DIR`   | Override temporary compiled conf folder.         | same as output              |
+| `-hypr_conf_dir FILE` | Override final `hyprland.conf` file.             | `./compileds/hyprland.conf` |
+| `-src_dic DIR`        | Override source directory.                       | `./src`                     |
+| `-man` / `--help`     | Show help menu.                                  | -                           |
+
+---
+
+### Example Commands
+
+* Compile and run the default example:
+
+```bash
+./main.sh
+```
+
+* Compile using a custom output folder:
+
+```bash
+./main.sh -output ./my_builds
+```
+
+* Manual build if chmod fails:
+
+```bash
+./main.sh -manual
+```
+
+* Override temporary and final configuration files:
+
+```bash
+./main.sh -tmp_conf_dir ./tmp -hypr_conf_dir ./hyprland.conf
+```
+
+* Change source directory:
+
+```bash
+./main.sh -src_dic ./my_ts_files
+```
+
+---
+
+## File Structure
+
+```
+hypr-ts/
+├─ src/                      # TypeScript keybinding source files
+│  ├─ compiler/              # Core compiler TypeScript files
+│  └─ examples/              # Example keybindings
+├─ compileds/                # Default output folder
+│  ├─ .node/                 # Node folder with compiled TS files
+│  ├─ hyprland_generated.conf # Compiled keybindings
+│  └─ hyprland.conf          # Minimal Hyprland config
+├─ main.sh                   # Main CLI entry
+├─ hyprland.compiler.sh      # Handles compilation and includes
+├─ help.menu.sh              # CLI help menu
+├─ permission.sh             # Permission handler
+└─ package.json
+```
+
+---
+
+## Notes
+
+* `.ts` files must export `hyprBindings` either as a `KeybindingCompiler` instance or an array of keybinds.
+* The compiler automatically resolves `.include()` references recursively.
+* `hyprland.conf` is minimal: it only sources the generated conf and executes `exec-once` commands.
+
+---
