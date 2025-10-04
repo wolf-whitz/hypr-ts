@@ -119,7 +119,10 @@ fi
 
 NODE_ID=$(date +%s)
 
-safe_run ./hyprland.compiler.sh "$FILE" "$NODE_ID" "$NODE_ROOT" "$TMP_CONF_DIR" "$HYPR_CONF_DIR" "$SRC_DIR"
+COMPILER_ARGS=("$FILE" "$NODE_ID" "$NODE_ROOT" "$TMP_CONF_DIR" "$HYPR_CONF_DIR" "$SRC_DIR")
+[ "$MANUAL_BUILD" = true ] && COMPILER_ARGS+=("-manual")
+
+safe_run ./hyprland.compiler.sh "${COMPILER_ARGS[@]}"
 
 echo -n "Reload Hyprland with this config? [y/N] "
 read RELOAD

@@ -31,7 +31,7 @@ OPTIONS:
       Default: ./src
 
   -recover
-      Recover all .conf files from backup copies in .copy folder.
+      Recover all .conf files from backup copies in the .copy folder.
 
   -h, --help
       Show this help message and exit.
@@ -45,7 +45,7 @@ COMPILER BEHAVIOR:
   - Adds a marker $compiled_{node_id} to prevent recompilation
   - Generates hyprland_generated.conf in the output folder
   - Generates hyprland.conf pointing to the compiled config
-  - Creates a backup copy in .copy folder
+  - Creates a backup copy in the .copy folder
   - Supports reloading Hyprland automatically
 
 --------------------------------------------------------
