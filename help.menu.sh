@@ -30,18 +30,22 @@ OPTIONS:
       Override the source directory for TS files.
       Default: ./src
 
+  -recover
+      Recover all .conf files from backup copies in .copy folder.
+
   -h, --help
       Show this help message and exit.
 
 --------------------------------------------------------
 COMPILER BEHAVIOR:
 
-  - Scans ./src for .ts files (excluding ./src/compiler)
+  - Scans the source directory for .ts files (excluding compiler folder)
   - Builds a tree for user selection
-  - Copies selected file and all .include() files into a node folder
+  - Copies selected file and all .include() files if needed
   - Adds a marker $compiled_{node_id} to prevent recompilation
   - Generates hyprland_generated.conf in the output folder
   - Generates hyprland.conf pointing to the compiled config
+  - Creates a backup copy in .copy folder
   - Supports reloading Hyprland automatically
 
 --------------------------------------------------------
@@ -61,6 +65,9 @@ EXAMPLES:
 
   # Use custom source directory
   ./main.sh -src_dic ./my_ts_src
+
+  # Recover from backup copies
+  ./main.sh -recover
 
 EOF
 

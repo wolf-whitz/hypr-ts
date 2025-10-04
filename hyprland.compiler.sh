@@ -6,68 +6,75 @@ COMPILED_DIR=$3
 TMP_CONF_DIR=$4
 HYPR_CONF_DIR=$5
 
-NODE_DIR="$COMPILED_DIR/.node"
-mkdir -p "$NODE_DIR"
-mkdir -p "$TMP_CONF_DIR"
-mkdir -p "$(dirname "$HYPR_CONF_DIR")"
+log_info() { echo "[INFO] $1"; }
+log_warn() { echo "[WARN] $1"; }
+log_error() { echo "[ERROR] $1"; }
 
-copy_and_patch() {
-  local SRC=$1
-  local DEST_DIR=$2
-  local DEST="$DEST_DIR/$(basename "$SRC")"
+mkdir -p "$COMPILED_DIR" || { log_error "Failed to create $COMPILED_DIR"; exit 1; }
+mkdir -p "$TMP_CONF_DIR" || { log_error "Failed to create $TMP_CONF_DIR"; exit 1; }
+mkdir -p "$(dirname "$HYPR_CONF_DIR")" || { log_error "Failed to create directory for $HYPR_CONF_DIR"; exit 1; }
 
-  if [[ -f "$DEST" ]]; then
-    return
-  fi
+COPY_DIR="$COMPILED_DIR/.copy"
+mkdir -p "$COPY_DIR" || { log_warn "Failed to create copy backup directory $COPY_DIR"; }
 
-  sed -E "s|from \"\.\./compiler/(.*)\.ts\"|from \"../../src/compiler/\1.ts\"|" "$SRC" > "$DEST"
-
-  grep -oP '\.include\(\s*["'\'']\K[^"'\'']+(?=["'\'']\s*\))' "$SRC" | while read -r INC; do
-    local FULL_INC=$(realpath "$(dirname "$SRC")/$INC")
-    copy_and_patch "$FULL_INC" "$DEST_DIR"
-  done
-}
-
-copy_and_patch "$SRC_FILE" "$NODE_DIR"
+COPY_CONF="$COPY_DIR/hyprland_generated.conf"
 
 BASENAME=$(basename "$SRC_FILE")
 
-echo "Compiling $SRC_FILE and all includes..."
-npx ts-node --esm "$NODE_DIR/$BASENAME"
-STATUS=$?
-if [[ $STATUS -ne 0 ]]; then
-  echo "Compilation failed!"
-  exit $STATUS
+if [ -d "$COMPILED_DIR" ] && [ -f ".gitignore" ]; then
+  if ! grep -qxF "$(basename "$COMPILED_DIR")/" .gitignore; then
+    echo "$(basename "$COMPILED_DIR")/" >> .gitignore || log_warn "Could not append $COMPILED_DIR to .gitignore"
+    log_info "Added $COMPILED_DIR to .gitignore"
+  fi
 fi
 
-COMPILED_CONF="$TMP_CONF_DIR/hyprland_generated.conf"
-HYPR_CONF="$HYPR_CONF_DIR"
+log_info "Compiling $SRC_FILE to .conf..."
 
 node -e "
 import { pathToFileURL } from 'url';
 import fs from 'fs';
 
-const mod = await import(pathToFileURL(process.argv[1]).href);
+try {
+  const mod = await import(pathToFileURL('$SRC_FILE').href);
 
-if ('hyprBindings' in mod) {
+  if (!('hyprBindings' in mod)) throw new Error('hyprBindings not exported in $SRC_FILE');
+
   const output =
     typeof mod.hyprBindings.compile === 'function'
       ? mod.hyprBindings.compile()
       : mod.hyprBindings;
+
   const marker = '\$compiled_$NODE_ID';
   const finalOutput = marker + '\n' + output;
-  fs.writeFileSync('$COMPILED_CONF', finalOutput);
+
+  const compiledConf = '$TMP_CONF_DIR/hyprland_generated.conf';
+  const copyConf = '$COPY_CONF';
+
+  if (!fs.existsSync(copyConf)) fs.writeFileSync(copyConf, finalOutput);
+
+  fs.writeFileSync(compiledConf, finalOutput);
 
   const hyprConfContent = \`# Auto-generated Hyprland config
-# Only includes compiled keybindings
-source \"$COMPILED_CONF\"
+# Includes compiled keybindings
+source "\${compiledConf}"
 exec-once echo 'Hyprland config loaded'
 \`;
-  fs.writeFileSync('$HYPR_CONF', hyprConfContent);
+  fs.writeFileSync('$HYPR_CONF_DIR', hyprConfContent);
 
-  console.log('Generated compiled conf at $COMPILED_CONF');
-  console.log('Generated hyprland.conf at $HYPR_CONF');
+  console.log('[INFO] Generated compiled conf at', compiledConf);
+  console.log('[INFO] Generated hyprland.conf at', '$HYPR_CONF_DIR');
+  console.log('[INFO] Backup copy at', copyConf);
+
+} catch (e) {
+  console.error('[ERROR]', e.message);
+  process.exit(1);
 }
-" "$NODE_DIR/$BASENAME"
+"
 
-echo "Node folder created at $NODE_DIR"
+STATUS=$?
+if [ $STATUS -ne 0 ]; then
+  log_error "Node.js compilation failed for $SRC_FILE"
+  exit $STATUS
+fi
+
+log_info "Done."
